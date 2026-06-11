@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kviz: Obnovljivi izvori energije</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Arial,sans-serif;
+    background:#000;
+    color:#fff;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    padding:20px;
+}
+
+.container{
+    width:100%;
+    max-width:700px;
+    background:#111;
+    border:1px solid #333;
+    border-radius:12px;
+    padding:25px;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+.progress{
+    color:#aaa;
+    margin-bottom:15px;
+}
+
+.question{
+    font-size:18px;
+    margin-bottom:20px;
+}
+
+.options{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:20px;
+}
+
+.option-btn{
+    background:#000;
+    color:#fff;
+    border:1px solid #444;
+    border-radius:8px;
+    padding:12px;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.option-btn:hover{
+    background:#222;
+}
+
+.option-btn.correct{
+    background:#fff;
+    color:#000;
+    border-color:#fff;
+}
+
+.option-btn.wrong{
+    background:#333;
+    color:#fff;
+}
+
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+}
+
+.simple{
+    background:#000;
+    color:#fff;
+    border:1px solid #444;
+    border-radius:8px;
+    padding:10px 15px;
+    cursor:pointer;
+}
+
+.simple:hover{
+    background:#222;
+}
+
+.simple:disabled{
+    opacity:.4;
+    cursor:not-allowed;
+}
+
+.result{
+    margin-top:15px;
+    font-size:18px;
+    font-weight:bold;
+}
+
+#solution{
+    margin-top:15px;
+    color:#ccc;
+}
+
+.score{
+    margin-left:auto;
+    color:#aaa;
+}
+
+@media(max-width:600px){
+    .options{
+        grid-template-columns:1fr;
+    }
+
+    .controls{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .score{
+        margin-left:0;
+        text-align:center;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>🌍 Kviz: Obnovljivi izvori energije</h1>
+
+    <div class="progress" id="progress"></div>
+
+    <div class="question" id="question"></div>
+
+    <div id="options" class="options"></div>
+
+    <div class="controls">
+        <button class="simple" id="prevBtn" onclick="prevQuestion()">◀ Lijevo</button>
+        <button class="simple" id="nextBtn" onclick="nextQuestionNav()">Desno ▶</button>
+        <button class="simple" onclick="toggleSolution()">Pokaži rješenje</button>
+        <button class="simple" onclick="restart()">Restart</button>
+
+        <div class="score">
+            Bodovi: <span id="score">0</span>
+        </div>
+    </div>
+
+    <div class="result" id="result"></div>
+    <div id="solution"></div>
+</div>
+
+<script>
+
+const quiz = [
+ {q:"Koji su glavni ciljevi Zakona o OIE (2021)?", a:["povećati udio oie","smanjiti emisije co2","potaknuti ulaganja"]},
+ {q:"Kako se potiču ulaganja u OIE?", a:["subvencije","poticaji","priključenje na mrežu"]},
+ {q:"Što se mijenja za male solarne elektrane od 2026?", a:["ukida se netiranje","tržišni obračun"]},
+ {q:"Tko donosi propise u Hrvatskoj za OIE?", a:["ministarstvo"]},
+ {q:"Što je OIE?", a:["obnovljivi izvor energije","sunce","vjetar","voda"]},
+ {q:"Prednosti OIE u odnosu na fosilna goriva?", a:["manje zagađenje","neiscrpni izvori"]},
+ {q:"Najveći udio OIE u svijetu?", a:["hidroelektrane","vjetar","sunce"]},
+ {q:"Najvažniji OIE u Hrvatskoj?", a:["hidro","solar","vjetar"]},
+ {q:"Najviše korišten OIE u Hrvatskoj?", a:["hidroenergija"]},
+ {q:"Energetska neovisnost?", a:["manja ovisnost o uvozu"]},
+ {q:"Utjecaj OIE na zapošljavanje?", a:["nova radna mjesta"]},
+ {q:"Što je biomasa?", a:["organska tvar","drvo","slama"]},
+ {q:"Bioenergija vrste?", a:["bioplin","biodizel","bioetanol"]},
+ {q:"Geotermalna energija?", a:["zemlja","toplina"]},
+ {q:"Geotermalne regije HR?", a:["slavonija","panonska"]}
+];
+
+let index = 0;
+let score = 0;
+const userAnswers = new Array(quiz.length).fill(null);
+
+const poolAnswers = quiz.flatMap(q => q.a.map(x => String(x)));
+
+function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+}
+
+function getOptions(i){
+    const correct=String(quiz[i].a[0]);
+    const opts=[correct];
+
+    const pool=poolAnswers.filter(x=>x!==correct);
+    shuffle(pool);
+
+    for(let p of pool){
+        if(opts.length>=4) break;
+        if(!opts.includes(p)) opts.push(p);
+    }
+
+    shuffle(opts);
+
+    return {opts,correct};
+}
+
+function show(){
+    const q=quiz[index];
+
+    document.getElementById("question").innerText=q.q;
+    document.getElementById("progress").innerText=`Pitanje ${index+1} / ${quiz.length}`;
+
+    const {opts,correct}=getOptions(index);
+
+    const container=document.getElementById("options");
+    container.innerHTML="";
+
+    opts.forEach(opt=>{
+        const btn=document.createElement("button");
+
+        btn.className="option-btn";
+        btn.innerText=opt;
+
+        btn.onclick=()=>selectOption(btn,opt,correct);
+
+        container.appendChild(btn);
+    });
+
+    document.getElementById("prevBtn").disabled=index===0;
+    document.getElementById("nextBtn").disabled=index===quiz.length-1;
+}
+
+function selectOption(btn,chosen,correct){
+
+    const buttons=document.querySelectorAll(".option-btn");
+
+    buttons.forEach(b=>b.disabled=true);
+
+    if(chosen===correct){
+        btn.classList.add("correct");
+        score++;
+        document.getElementById("result").innerText="Točno!";
+    }else{
+        btn.classList.add("wrong");
+        document.getElementById("result").innerText="Netočno.";
+
+        buttons.forEach(b=>{
+            if(b.innerText===correct){
+                b.classList.add("correct");
+            }
+        });
+    }
+
+    document.getElementById("score").innerText=score;
+}
+
+function nextQuestionNav(){
+    if(index<quiz.length-1){
+        index++;
+        document.getElementById("result").innerText="";
+        document.getElementById("solution").innerText="";
+        show();
+    }
+}
+
+function prevQuestion(){
+    if(index>0){
+        index--;
+        document.getElementById("result").innerText="";
+        document.getElementById("solution").innerText="";
+        show();
+    }
+}
+
+function toggleSolution(){
+    document.getElementById("solution").innerText=
+    "Točan odgovor: " + quiz[index].a.join(", ");
+}
+
+function restart(){
+    index=0;
+    score=0;
+
+    document.getElementById("score").innerText="0";
+    document.getElementById("result").innerText="";
+    document.getElementById("solution").innerText="";
+
+    show();
+}
+
+show();
+
+</script>
+
+</body>
+</html>
